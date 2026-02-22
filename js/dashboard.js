@@ -110,9 +110,11 @@ function renderLinks() {
   statTotalHits.textContent  = totalHits;
 
   linksTableBody.innerHTML = allLinks.map(link => {
-    const url     = buildTrackUrl(link.id);
-    const hits    = link.hitCount || 0;
+    const url      = buildTrackUrl(link.id);
+    const hits     = link.hitCount || 0;
     const badgeCls = hits === 0 ? 'badge-blue' : hits < 5 ? 'badge-orange' : 'badge-green';
+    const dest     = link.destinationUrl || '';
+    const destHost = dest ? (() => { try { return new URL(dest).hostname; } catch { return dest; } })() : '—';
 
     return `
       <tr>
@@ -129,6 +131,14 @@ function renderLinks() {
               <i class="fas fa-copy"></i>
             </button>
           </div>
+        </td>
+        <td data-label="Destination">
+          ${dest
+            ? `<a href="${escapeHtml(dest)}" target="_blank" class="dest-link" title="${escapeHtml(dest)}">
+                <i class="fas fa-external-link-alt"></i> ${escapeHtml(destHost)}
+               </a>`
+            : '<span style="color:var(--text-muted)">—</span>'
+          }
         </td>
         <td data-label="Hits">
           <span class="badge ${badgeCls}">
@@ -202,17 +212,38 @@ async function createLink() {
   createBtn.disabled = true;
   createBtn.innerHTML = '<span class="spinner"></span> Creating…';
 
+  const destInput = document.getElementById('destinationUrl');
+  const destUrl   = destInput.value.trim();
+  if (!destUrl) {
+    destInput.focus();
+    showToast('Please enter a destination URL.', 'error');
+    createBtn.disabled = false;
+    createBtn.innerHTML = '<i class="fas fa-plus"></i> Create Link';
+    return;
+  }
+
+  // Basic URL validation
+  try { new URL(destUrl); } catch {
+    destInput.focus();
+    showToast('Please enter a valid URL (include https://).', 'error');
+    createBtn.disabled = false;
+    createBtn.innerHTML = '<i class="fas fa-plus"></i> Create Link';
+    return;
+  }
+
   try {
     const linkId = generateId(10);
     await db.collection('tracking_links').doc(linkId).set({
-      name:      name,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      hitCount:  0
+      name:           name,
+      destinationUrl: destUrl,
+      createdAt:      firebase.firestore.FieldValue.serverTimestamp(),
+      hitCount:       0
     });
 
     closeCreateModal();
     showToast(`Tracking link "${name}" created!`, 'success');
-    nameInput.value = '';
+    nameInput.value  = '';
+    destInput.value  = '';
   } catch (err) {
     console.error(err);
     closeCreateModal();
@@ -412,7 +443,8 @@ function openCreateModal() {
 function closeCreateModal() {
   createModal.classList.remove('active');
   document.body.style.overflow = '';
-  document.getElementById('linkName').value = '';
+  document.getElementById('linkName').value        = '';
+  document.getElementById('destinationUrl').value  = '';
 }
 
 function closeViewModal() {
